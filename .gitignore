@@ -8,6 +8,10 @@ out-tsc
 .expo
 .expo-shared
 
+.streamlit/secrets.toml
+data/
+*.db
+
 # dependencies
 node_modules
 

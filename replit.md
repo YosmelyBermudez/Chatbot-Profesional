@@ -37,6 +37,7 @@ Groq (LLMs Llama/Qwen + Whisper para voz) y RAG ligero con TF-IDF.
 - Python 3.11
 - Streamlit 1.56
 - Groq SDK (LLMs Llama/Qwen y Whisper)
+- google-generativeai (Gemini 2.0/2.5 Flash, 1.5 Pro como alternativa cuando Groq esté bloqueado)
 - LangChain core (no se usa la cadena, solo conceptos)
 - scikit-learn (TF-IDF vectorizer + cosine similarity)
 - pypdf, python-docx (extracción de texto)
@@ -51,3 +52,4 @@ Groq (LLMs Llama/Qwen + Whisper para voz) y RAG ligero con TF-IDF.
 ## Variables de entorno requeridas
 
 - `GROQ_API_KEY` — clave de Groq (se obtiene en https://console.groq.com/keys)
+- `GEMINI_API_KEY` — clave de Google Gemini (https://aistudio.google.com/app/apikey) — usada como alternativa automática cuando Groq devuelve 403 (bloqueo regional Venezuela)

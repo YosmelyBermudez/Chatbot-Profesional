@@ -6,8 +6,10 @@ Maneja: usuarios, conversaciones, resúmenes, documentos para RAG y memoria del 
 import sqlite3
 import json
 import os
+import secrets
 from datetime import datetime
 from typing import Optional
+import bcrypt
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "agentes.db")
 
@@ -29,7 +31,20 @@ def init_db():
         nombre TEXT NOT NULL,
         profesion TEXT,
         area TEXT,
-        fecha_registro TEXT
+        fecha_registro TEXT,
+        password_hash TEXT
+    )""")
+
+    try:
+        c.execute("ALTER TABLE usuarios ADD COLUMN password_hash TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    c.execute("""CREATE TABLE IF NOT EXISTS sesiones (
+        token TEXT PRIMARY KEY,
+        usuario_id INTEGER NOT NULL,
+        fecha_creacion TEXT,
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     )""")
 
     c.execute("""CREATE TABLE IF NOT EXISTS conversaciones (
@@ -101,13 +116,16 @@ def buscar_usuario_por_email(email: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
-def crear_usuario(email: str, nombre: str, profesion: str, area: str) -> dict:
+def crear_usuario(email: str, nombre: str, profesion: str, area: str,
+                  password: str) -> dict:
     conn = get_conn()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    pw_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     conn.execute(
-        """INSERT INTO usuarios (email, nombre, profesion, area, fecha_registro)
-           VALUES (?, ?, ?, ?, ?)""",
-        (email.lower().strip(), nombre.strip(), profesion.strip(), area.strip(), ahora),
+        """INSERT INTO usuarios (email, nombre, profesion, area, fecha_registro, password_hash)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (email.lower().strip(), nombre.strip(), profesion.strip(), area.strip(),
+         ahora, pw_hash),
     )
     conn.commit()
     conn.close()
@@ -115,6 +133,51 @@ def crear_usuario(email: str, nombre: str, profesion: str, area: str) -> dict:
     if user is None:
         raise RuntimeError("No se pudo crear el usuario")
     return user
+
+def verificar_password(email: str, password: str) -> Optional[dict]:
+    user = buscar_usuario_por_email(email)
+    if not user or not user.get("password_hash"):
+        return None
+    try:
+        if bcrypt.checkpw(password.encode("utf-8"),
+                          user["password_hash"].encode("utf-8")):
+            return user
+    except (ValueError, TypeError):
+        return None
+    return None
+
+
+def crear_sesion(usuario_id: int) -> str:
+    token = secrets.token_urlsafe(32)
+    conn = get_conn()
+    ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn.execute(
+        "INSERT INTO sesiones (token, usuario_id, fecha_creacion) VALUES (?, ?, ?)",
+        (token, usuario_id, ahora),
+    )
+    conn.commit(); conn.close()
+    return token
+
+
+def usuario_por_token(token: str) -> Optional[dict]:
+    if not token:
+        return None
+    conn = get_conn()
+    row = conn.execute(
+        """SELECT u.* FROM usuarios u
+           JOIN sesiones s ON s.usuario_id = u.id
+           WHERE s.token = ?""", (token,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def eliminar_sesion(token: str):
+    if not token:
+        return
+    conn = get_conn()
+    conn.execute("DELETE FROM sesiones WHERE token = ?", (token,))
+    conn.commit(); conn.close()
 
 
 def listar_usuarios() -> list:

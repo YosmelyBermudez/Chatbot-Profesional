@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 
 import streamlit as st
+import extra_streamlit_components as stx
 
 import db
 import llm
@@ -21,6 +22,40 @@ st.set_page_config(
 
 db.init_db()
 
+COOKIE_NAME = "asistentes_token"
+
+
+def get_cookie_manager():
+    if "_cookie_mgr" not in st.session_state:
+        st.session_state["_cookie_mgr"] = stx.CookieManager(key="cookie_mgr_global")
+    return st.session_state["_cookie_mgr"]
+
+
+def auto_login_desde_cookie():
+    """Si hay un token válido en cookie, restaura la sesión del usuario."""
+    if "usuario" in st.session_state:
+        return
+    cookies = get_cookie_manager().get_all()
+    token = cookies.get(COOKIE_NAME) if cookies else None
+    if token:
+        user = db.usuario_por_token(token)
+        if user:
+            st.session_state.usuario = user
+            st.session_state.session_token = token
+
+
+def cerrar_sesion():
+    token = st.session_state.get("session_token")
+    if token:
+        db.eliminar_sesion(token)
+    get_cookie_manager().delete(COOKIE_NAME, key="cookie_del_logout")
+    for k in list(st.session_state.keys()):
+        del st.session_state[k]
+    st.rerun()
+
+
+auto_login_desde_cookie()
+
 
 # ============================================================
 # AUTENTICACIÓN SIMPLE (multi-usuario)
@@ -33,22 +68,35 @@ def pantalla_login():
     tab_login, tab_registro = st.tabs(["Iniciar sesión", "Registrarme"])
 
     with tab_login:
-        st.subheader("Selecciona tu perfil")
-        usuarios = db.listar_usuarios()
-        if not usuarios:
-            st.info("No hay usuarios registrados todavía. Pasa a la pestaña *Registrarme*.")
-        else:
-            opciones = {f"{u['nombre']} ({u['email']})": u for u in usuarios}
-            seleccion = st.selectbox("Usuario", list(opciones.keys()))
-            if st.button("Entrar", type="primary", use_container_width=True):
-                st.session_state.usuario = opciones[seleccion]
-                st.rerun()
+        st.subheader("Inicia sesión con tu email y contraseña")
+        with st.form("login_form"):
+            email_in = st.text_input("Email", placeholder="tu@empresa.com")
+            pwd_in = st.text_input("Contraseña", type="password")
+            recordar = st.checkbox("Mantenerme conectado en este navegador", value=True)
+            ok = st.form_submit_button("Entrar", type="primary", use_container_width=True)
+            if ok:
+                user = db.verificar_password(email_in, pwd_in)
+                if user:
+                    st.session_state.usuario = user
+                    if recordar:
+                        token = db.crear_sesion(user["id"])
+                        st.session_state.session_token = token
+                        get_cookie_manager().set(
+                            COOKIE_NAME, token,
+                            expires_at=datetime(2099, 1, 1),
+                            key="cookie_set_login",
+                        )
+                    st.rerun()
+                else:
+                    st.error("Email o contraseña incorrectos.")
 
     with tab_registro:
         st.subheader("Crear perfil nuevo")
         with st.form("registro"):
             email = st.text_input("Email *", placeholder="tu@empresa.com")
             nombre = st.text_input("Nombre completo *")
+            pwd1 = st.text_input("Contraseña * (mínimo 6 caracteres)", type="password")
+            pwd2 = st.text_input("Repite la contraseña *", type="password")
             profesion = st.text_input(
                 "Profesión",
                 placeholder="Ingeniero industrial, civil, mecánico, abogado, médico, etc.",
@@ -57,16 +105,30 @@ def pantalla_login():
                 "Área / departamento",
                 placeholder="Producción, RRHH, Calidad, Mantenimiento, Seguridad, etc.",
             )
+            recordar_reg = st.checkbox("Mantenerme conectado en este navegador",
+                                        value=True, key="reg_recordar")
             submitted = st.form_submit_button("Crear y entrar", type="primary",
                                               use_container_width=True)
             if submitted:
-                if not email or not nombre:
-                    st.error("Email y nombre son obligatorios")
+                if not email or not nombre or not pwd1:
+                    st.error("Email, nombre y contraseña son obligatorios")
+                elif len(pwd1) < 6:
+                    st.error("La contraseña debe tener al menos 6 caracteres")
+                elif pwd1 != pwd2:
+                    st.error("Las contraseñas no coinciden")
                 elif db.buscar_usuario_por_email(email):
                     st.error("Ya existe un usuario con ese email — usa la pestaña *Iniciar sesión*.")
                 else:
-                    user = db.crear_usuario(email, nombre, profesion, area)
+                    user = db.crear_usuario(email, nombre, profesion, area, pwd1)
                     st.session_state.usuario = user
+                    if recordar_reg:
+                        token = db.crear_sesion(user["id"])
+                        st.session_state.session_token = token
+                        get_cookie_manager().set(
+                            COOKIE_NAME, token,
+                            expires_at=datetime(2099, 1, 1),
+                            key="cookie_set_register",
+                        )
                     st.success(f"¡Bienvenido, {nombre}!")
                     st.rerun()
 
@@ -211,37 +273,34 @@ def render_chat(agente_key: str):
 
 
 def render_voice_input(agente_key: str) -> str:
-    """Devuelve el texto transcrito si el usuario grabó algo nuevo."""
+    """Devuelve el texto dictado en español usando el reconocimiento del navegador."""
     try:
-        from streamlit_mic_recorder import mic_recorder
-    except Exception:
+        from streamlit_mic_recorder import speech_to_text
+    except Exception as e:
+        st.error(f"⚠️ No se pudo cargar el dictado por voz: {e}")
         return ""
 
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        audio = mic_recorder(
-            start_prompt="🎤 Grabar voz",
+    with st.container(border=True):
+        st.markdown("### 🎤 Dictar en lugar de escribir")
+        st.caption(
+            "Pulsa **Hablar**, di tu mensaje y pulsa **Detener**. "
+            "El navegador transcribe directamente, sin enviar audio a ningún servidor. "
+            "Funciona en Chrome y Edge. **Importante:** ábrelo en una pestaña nueva "
+            "(botón ↗️ del panel) para que el navegador pida permiso de micrófono."
+        )
+        texto = speech_to_text(
+            language="es-ES",
+            start_prompt="🎤 Hablar",
             stop_prompt="⏹️ Detener",
             just_once=True,
             use_container_width=True,
-            key=f"mic_{agente_key}",
+            key=f"stt_{agente_key}",
         )
 
-    if not audio:
-        return ""
-
-    audio_bytes = audio["bytes"] if isinstance(audio, dict) else None
-    if not audio_bytes:
-        return ""
-
-    try:
-        with col2:
-            with st.spinner("Transcribiendo audio..."):
-                texto = llm.transcribir_audio(audio_bytes, nombre="grabacion.wav")
-        return (texto or "").strip()
-    except Exception as e:
-        st.warning(f"No se pudo transcribir: {e}")
-        return ""
+    if texto:
+        st.success(f"📝 Dictado: *{texto[:140]}{'…' if len(texto) > 140 else ''}*")
+        return texto.strip()
+    return ""
 
 
 def procesar_pregunta(agente_key: str, pregunta: str, ctx_extra: str):
@@ -252,7 +311,7 @@ def procesar_pregunta(agente_key: str, pregunta: str, ctx_extra: str):
     with st.chat_message("user"):
         st.markdown(pregunta)
 
-    modelo_id = llm.MODELOS_GROQ[st.session_state.modelo_seleccionado]
+    modelo_id = llm.MODELOS[st.session_state.modelo_seleccionado]
     payload = construir_mensajes(agente_key, mensajes, pregunta, ctx_extra)
 
     with st.chat_message("assistant"):
@@ -284,17 +343,15 @@ def sidebar_principal():
         st.markdown(f"### 👋 Hola, {user['nombre']}")
         st.caption(f"{user.get('profesion') or '—'} | {user.get('area') or '—'}")
         if st.button("Cerrar sesión", use_container_width=True):
-            for k in list(st.session_state.keys()):
-                del st.session_state[k]
-            st.rerun()
+            cerrar_sesion()
 
         st.divider()
 
         st.markdown("### ⚙️ Modelo")
         st.session_state.modelo_seleccionado = st.selectbox(
             "Modelo de IA",
-            list(llm.MODELOS_GROQ.keys()),
-            index=list(llm.MODELOS_GROQ.keys()).index(
+            list(llm.MODELOS.keys()),
+            index=list(llm.MODELOS.keys()).index(
                 st.session_state.get("modelo_seleccionado", llm.MODELO_DEFAULT)
             ),
             label_visibility="collapsed",
@@ -365,9 +422,10 @@ def pantalla_conocimiento():
 
             archivos = st.file_uploader(
                 f"Subir documentos para {agente['nombre']}",
-                type=["pdf", "docx", "txt", "md"],
+                type=["pdf", "docx", "xlsx", "xlsm", "csv", "txt", "md"],
                 accept_multiple_files=True,
                 key=f"upload_{key}",
+                help="Formatos: PDF, Word (.docx), Excel (.xlsx/.xlsm), CSV, texto plano",
             )
             if archivos and st.button("Procesar e indexar", key=f"proc_{key}",
                                        type="primary"):
@@ -620,6 +678,7 @@ def app():
         "chat": "💬 Chat con agentes",
         "conocimiento": "📚 Documentos",
         "resumenes": "📑 Resúmenes",
+        "reuniones": "🎙️ Reuniones",
         "integrar": "🔗 Integrar",
         "memoria": "🧠 Memoria",
     }
@@ -656,14 +715,116 @@ def app():
         pantalla_conocimiento()
     elif st.session_state.tab_actual == "resumenes":
         pantalla_resumenes()
+    elif st.session_state.tab_actual == "reuniones":
+        pantalla_reuniones()
     elif st.session_state.tab_actual == "integrar":
         pantalla_integrar()
     elif st.session_state.tab_actual == "memoria":
         pantalla_memoria()
 
 
-if __name__ == "__main__":
-    if not os.environ.get("GROQ_API_KEY"):
-        st.error("Falta la variable de entorno GROQ_API_KEY")
-    else:
-        app()
+def pantalla_reuniones():
+    st.header("🎙️ Reuniones — Grabar y resumir")
+    st.caption(
+        "Graba (o pega) la transcripción de una reunión y obtén una minuta "
+        "estructurada. La transcripción se hace en tu navegador (no se envía "
+        "audio a ningún servidor). Para que el navegador pida permiso de "
+        "micrófono, abre la app en una pestaña nueva con el botón ↗️."
+    )
+
+    user = st.session_state.usuario
+
+    if "reunion_texto" not in st.session_state:
+        st.session_state.reunion_texto = ""
+    if "reunion_resumen" not in st.session_state:
+        st.session_state.reunion_resumen = ""
+
+    col_dictado, col_acciones = st.columns([3, 1])
+
+    with col_dictado:
+        st.subheader("1️⃣ Dictar o pegar transcripción")
+        try:
+            from streamlit_mic_recorder import speech_to_text
+            with st.container(border=True):
+                st.markdown("**Dictar por voz** — pulsa Hablar, di un fragmento, pulsa Detener. Repite y se va acumulando.")
+                fragmento = speech_to_text(
+                    language="es-ES",
+                    start_prompt="🎤 Hablar",
+                    stop_prompt="⏹️ Detener fragmento",
+                    just_once=True,
+                    use_container_width=True,
+                    key="stt_reunion",
+                )
+                if fragmento:
+                    sep = " " if st.session_state.reunion_texto else ""
+                    st.session_state.reunion_texto += sep + fragmento
+                    st.rerun()
+        except Exception as e:
+            st.warning(f"Dictado no disponible: {e}")
+
+        st.session_state.reunion_texto = st.text_area(
+            "Transcripción acumulada (puedes editarla a mano o pegar desde otro lado)",
+            value=st.session_state.reunion_texto,
+            height=260,
+            placeholder="Pega aquí la transcripción o dicta arriba…",
+        )
+
+    with col_acciones:
+        st.subheader("2️⃣ Acciones")
+        st.metric("Caracteres", len(st.session_state.reunion_texto))
+        st.metric("Palabras aprox.",
+                  len(st.session_state.reunion_texto.split()) if st.session_state.reunion_texto else 0)
+        if st.button("🧹 Limpiar todo", use_container_width=True):
+            st.session_state.reunion_texto = ""
+            st.session_state.reunion_resumen = ""
+            st.rerun()
+
+    st.divider()
+    st.subheader("3️⃣ Generar minuta")
+
+    titulo_reunion = st.text_input("Título de la reunión",
+                                    placeholder="Ej: Comité SST — Octubre 2025")
+    contexto_extra = st.text_area(
+        "Contexto adicional (opcional)",
+        placeholder="Ej: Reunión mensual del Comité de SST. Se revisaron accidentes del mes y plan de capacitación.",
+        height=80,
+    )
+
+    if st.button("📝 Generar minuta estructurada", type="primary",
+                 disabled=not st.session_state.reunion_texto.strip()):
+        with st.spinner("Generando minuta…"):
+            try:
+                resumen = llm.generar_resumen_reunion(
+                    st.session_state.reunion_texto, contexto_extra
+                )
+                st.session_state.reunion_resumen = resumen
+            except Exception as e:
+                st.error(f"Error al generar minuta: {e}")
+
+    if st.session_state.reunion_resumen:
+        st.divider()
+        st.subheader("📋 Minuta")
+        st.markdown(st.session_state.reunion_resumen)
+
+        col_g, col_d = st.columns(2)
+        with col_g:
+            if st.button("💾 Guardar en mi biblioteca", use_container_width=True):
+                titulo = (titulo_reunion or "Reunión").strip()
+                fecha = datetime.now().strftime("%Y-%m-%d %H:%M")
+                db.guardar_resumen(
+                    user["id"], None, "reunion",
+                    f"{titulo} — {fecha}",
+                    st.session_state.reunion_resumen,
+                )
+                st.success("✅ Guardado en *Resúmenes*.")
+        with col_d:
+            st.download_button(
+                "⬇️ Descargar como Markdown",
+                data=st.session_state.reunion_resumen,
+                file_name=f"minuta_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
+                mime="text/markdown",
+                use_container_width=True,
+            )
+
+
+app()

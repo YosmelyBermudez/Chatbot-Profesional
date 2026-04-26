@@ -41,6 +41,32 @@ def extraer_texto_txt(file_bytes: bytes) -> str:
             continue
     return file_bytes.decode("utf-8", errors="ignore")
 
+def extraer_texto_xlsx(file_bytes: bytes) -> str:
+    """Extrae texto de un Excel: cada hoja como sección, filas como CSV legible."""
+    from openpyxl import load_workbook
+    wb = load_workbook(BytesIO(file_bytes), data_only=True, read_only=True)
+    secciones = []
+    for nombre_hoja in wb.sheetnames:
+        ws = wb[nombre_hoja]
+        filas = []
+        for fila in ws.iter_rows(values_only=True):
+            celdas = [str(c) if c is not None else "" for c in fila]
+            if any(c.strip() for c in celdas):
+                filas.append(" | ".join(celdas))
+        if filas:
+            secciones.append(f"## Hoja: {nombre_hoja}\n" + "\n".join(filas))
+    wb.close()
+    return "\n\n".join(secciones)
+
+
+def extraer_texto_csv(file_bytes: bytes) -> str:
+    """Lee un CSV y lo presenta como texto tabular legible."""
+    import csv
+    texto_crudo = extraer_texto_txt(file_bytes)
+    lector = csv.reader(texto_crudo.splitlines())
+    filas = [" | ".join(c.strip() for c in fila) for fila in lector if any(c.strip() for c in fila)]
+    return "\n".join(filas)
+
 
 def extraer_texto(nombre_archivo: str, file_bytes: bytes) -> str:
     n = nombre_archivo.lower()
@@ -48,6 +74,10 @@ def extraer_texto(nombre_archivo: str, file_bytes: bytes) -> str:
         return extraer_texto_pdf(file_bytes)
     if n.endswith(".docx"):
         return extraer_texto_docx(file_bytes)
+    if n.endswith(".xlsx") or n.endswith(".xlsm"):
+        return extraer_texto_xlsx(file_bytes)
+    if n.endswith(".csv"):
+        return extraer_texto_csv(file_bytes)
     if n.endswith(".txt") or n.endswith(".md"):
         return extraer_texto_txt(file_bytes)
     raise ValueError(f"Formato no soportado: {nombre_archivo}")
