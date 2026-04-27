@@ -6,3 +6,7 @@ google-generativeai
 bcrypt
 scikit-learn
 pypdf
+langchain-groq
+langchain-core
+streamlit-mic-recorder
+python-docx
