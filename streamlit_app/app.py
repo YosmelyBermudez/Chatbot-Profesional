@@ -780,19 +780,26 @@ def pantalla_reuniones():
         try:
             from streamlit_mic_recorder import speech_to_text
             with st.container(border=True):
-                st.markdown("**Dictar por voz** — pulsa Hablar, di un fragmento, pulsa Detener. Repite y se va acumulando.")
+                st.markdown(
+                    "**Grabación continua** — pulsa **Iniciar** una sola vez y habla sin límite. "
+                    "Cada frase se guarda automáticamente. Pulsa **Detener** solo al terminar la reunión. "
+                    "Si hay una pausa larga y el micrófono se detiene solo, vuelve a pulsar Iniciar."
+                )
+                grabando = st.session_state.get("reunion_grabando", False)
+                if grabando:
+                    st.success("🔴 Grabando… habla con normalidad")
                 fragmento = speech_to_text(
                     language="es-ES",
-                    start_prompt="🎤 Hablar",
-                    stop_prompt="⏹️ Detener fragmento",
-                    just_once=True,
+                    start_prompt="🎤 Iniciar grabación",
+                    stop_prompt="⏹️ Detener grabación",
+                    just_once=False,
                     use_container_width=True,
                     key="stt_reunion",
                 )
                 if fragmento:
+                    st.session_state.reunion_grabando = True
                     sep = " " if st.session_state.reunion_texto else ""
                     st.session_state.reunion_texto += sep + fragmento
-                    st.rerun()
         except Exception as e:
             st.warning(f"Dictado no disponible: {e}")
 
@@ -811,6 +818,7 @@ def pantalla_reuniones():
         if st.button("🧹 Limpiar todo", use_container_width=True):
             st.session_state.reunion_texto = ""
             st.session_state.reunion_resumen = ""
+            st.session_state.reunion_grabando = False
             st.rerun()
 
     st.divider()
