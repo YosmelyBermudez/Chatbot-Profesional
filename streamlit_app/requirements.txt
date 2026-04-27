@@ -10,3 +10,4 @@ openpyxl
 scikit-learn
 bcrypt
 streamlit-mic-recorder
+streamlit-cookies-controller
