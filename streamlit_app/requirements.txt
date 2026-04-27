@@ -1,7 +1,5 @@
 streamlit
 groq
-langchain-groq
-langchain-core
 openai
 google-generativeai
 pypdf
