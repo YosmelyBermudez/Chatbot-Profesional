@@ -1,0 +1,8 @@
+streamlit
+extra-streamlit-components
+groq
+openai>=2.32.0
+google-generativeai
+bcrypt
+scikit-learn
+pypdf
