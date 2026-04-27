@@ -3,7 +3,9 @@
     "allow": [
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(python -c \"import streamlit_mic_recorder; help\\(streamlit_mic_recorder.speech_to_text\\)\")",
+      "Bash(pip show *)"
     ]
   }
 }
