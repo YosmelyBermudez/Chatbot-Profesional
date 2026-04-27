@@ -6,11 +6,9 @@ integración de conversaciones y entrada por voz.
 import os
 from datetime import datetime
 
-import streamlit as st
-import extra_streamlit_components as stx
-
 import traceback
-import sys
+
+import streamlit as st
 
 try:
     import db
@@ -18,7 +16,6 @@ try:
     import rag
     from agents import AGENTES, listar_agentes, get_agente
 except Exception as e:
-    import streamlit as st
     st.error(f"Error al importar módulos: {e}")
     st.code(traceback.format_exc())
     st.stop()
@@ -31,39 +28,14 @@ st.set_page_config(
 
 db.init_db()
 
-COOKIE_NAME = "asistentes_token"
-
-
-def get_cookie_manager():
-    if "_cookie_mgr" not in st.session_state:
-        st.session_state["_cookie_mgr"] = stx.CookieManager(key="cookie_mgr_global")
-    return st.session_state["_cookie_mgr"]
-
-
-def auto_login_desde_cookie():
-    """Si hay un token válido en cookie, restaura la sesión del usuario."""
-    if "usuario" in st.session_state:
-        return
-    cookies = get_cookie_manager().get_all()
-    token = cookies.get(COOKIE_NAME) if cookies else None
-    if token:
-        user = db.usuario_por_token(token)
-        if user:
-            st.session_state.usuario = user
-            st.session_state.session_token = token
-
 
 def cerrar_sesion():
     token = st.session_state.get("session_token")
     if token:
         db.eliminar_sesion(token)
-    get_cookie_manager().delete(COOKIE_NAME, key="cookie_del_logout")
     for k in list(st.session_state.keys()):
         del st.session_state[k]
     st.rerun()
-
-
-auto_login_desde_cookie()
 
 
 # ============================================================
@@ -81,20 +53,11 @@ def pantalla_login():
         with st.form("login_form"):
             email_in = st.text_input("Email", placeholder="tu@empresa.com")
             pwd_in = st.text_input("Contraseña", type="password")
-            recordar = st.checkbox("Mantenerme conectado en este navegador", value=True)
             ok = st.form_submit_button("Entrar", type="primary", use_container_width=True)
             if ok:
                 user = db.verificar_password(email_in, pwd_in)
                 if user:
                     st.session_state.usuario = user
-                    if recordar:
-                        token = db.crear_sesion(user["id"])
-                        st.session_state.session_token = token
-                        get_cookie_manager().set(
-                            COOKIE_NAME, token,
-                            expires_at=datetime(2099, 1, 1),
-                            key="cookie_set_login",
-                        )
                     st.rerun()
                 else:
                     st.error("Email o contraseña incorrectos.")
@@ -114,8 +77,6 @@ def pantalla_login():
                 "Área / departamento",
                 placeholder="Producción, RRHH, Calidad, Mantenimiento, Seguridad, etc.",
             )
-            recordar_reg = st.checkbox("Mantenerme conectado en este navegador",
-                                        value=True, key="reg_recordar")
             submitted = st.form_submit_button("Crear y entrar", type="primary",
                                               use_container_width=True)
             if submitted:
@@ -130,14 +91,6 @@ def pantalla_login():
                 else:
                     user = db.crear_usuario(email, nombre, profesion, area, pwd1)
                     st.session_state.usuario = user
-                    if recordar_reg:
-                        token = db.crear_sesion(user["id"])
-                        st.session_state.session_token = token
-                        get_cookie_manager().set(
-                            COOKIE_NAME, token,
-                            expires_at=datetime(2099, 1, 1),
-                            key="cookie_set_register",
-                        )
                     st.success(f"¡Bienvenido, {nombre}!")
                     st.rerun()
 
