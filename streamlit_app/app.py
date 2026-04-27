@@ -9,10 +9,19 @@ from datetime import datetime
 import streamlit as st
 import extra_streamlit_components as stx
 
-import db
-import llm
-import rag
-from agents import AGENTES, listar_agentes, get_agente
+import traceback
+import sys
+
+try:
+    import db
+    import llm
+    import rag
+    from agents import AGENTES, listar_agentes, get_agente
+except Exception as e:
+    import streamlit as st
+    st.error(f"Error al importar módulos: {e}")
+    st.code(traceback.format_exc())
+    st.stop()
 
 st.set_page_config(
     page_title="Asistentes Profesionales",
