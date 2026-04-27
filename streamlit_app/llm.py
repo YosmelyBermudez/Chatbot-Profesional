@@ -59,10 +59,15 @@ MODELOS_GEMINI = {
     "💎 Gemini 1.5 Pro (Google)": "gemini-1.5-pro",
 }
 
-MODELOS = {**MODELOS_OPENROUTER, **MODELOS_GROQ, **MODELOS_GEMINI}
+MODELOS = {**MODELOS_OPENROUTER}
 
 MODELO_DEFAULT = "🆓 Nemotron 120B (OpenRouter gratis)"
 MODELO_RESUMEN_OPENROUTER = "nvidia/nemotron-3-super-120b-a12b:free"
+OPENROUTER_FALLBACKS = [
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "openai/gpt-oss-120b:free",
+    "z-ai/glm-4.5-air:free",
+]
 MODELO_WHISPER = "whisper-large-v3"
 
 
@@ -111,27 +116,44 @@ def _openrouter_client():
 
 
 def _openrouter_stream(modelo_id: str, mensajes: List[dict], temperature: float) -> Iterator[str]:
-    client = _openrouter_client()
-    stream = client.chat.completions.create(
-        model=modelo_id,
-        messages=mensajes,
-        temperature=temperature,
-        stream=True,
-    )
-    for chunk in stream:
-        delta = chunk.choices[0].delta.content if chunk.choices else None
-        if delta:
-            yield delta
+    intentos = [modelo_id] + [m for m in OPENROUTER_FALLBACKS if m != modelo_id]
+    ultimo_error = None
+    for modelo in intentos:
+        try:
+            client = _openrouter_client()
+            stream = client.chat.completions.create(
+                model=modelo,
+                messages=mensajes,
+                temperature=temperature,
+                stream=True,
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content if chunk.choices else None
+                if delta:
+                    yield delta
+            return
+        except Exception as e:
+            ultimo_error = e
+            continue
+    raise ultimo_error
 
 
 def _openrouter_completo(modelo_id: str, mensajes: List[dict], temperature: float) -> str:
-    client = _openrouter_client()
-    res = client.chat.completions.create(
-        model=modelo_id,
-        messages=mensajes,
-        temperature=temperature,
-    )
-    return res.choices[0].message.content or ""
+    intentos = [modelo_id] + [m for m in OPENROUTER_FALLBACKS if m != modelo_id]
+    ultimo_error = None
+    for modelo in intentos:
+        try:
+            client = _openrouter_client()
+            res = client.chat.completions.create(
+                model=modelo,
+                messages=mensajes,
+                temperature=temperature,
+            )
+            return res.choices[0].message.content or ""
+        except Exception as e:
+            ultimo_error = e
+            continue
+    raise ultimo_error
 
 
 # ---------- Gemini ----------

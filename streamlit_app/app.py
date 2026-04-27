@@ -381,6 +381,15 @@ def sidebar_principal():
             ),
             label_visibility="collapsed",
         )
+    with st.expander("⚙️ Modelos avanzados (pueden fallar según tu región)"):
+        st.caption("Groq está bloqueado en Venezuela. Gemini tiene cuota limitada.")
+        modelo_avanzado = st.selectbox(
+            "Groq / Gemini",
+            ["— ninguno —"] + list({**llm.MODELOS_GROQ, **llm.MODELOS_GEMINI}.keys()),
+            key="modelo_avanzado"
+        )
+    if modelo_avanzado != "— ninguno —":
+        st.session_state.modelo_seleccionado = modelo_avanzado
         st.session_state.temperatura = st.slider(
             "Creatividad", 0.0, 1.0,
             st.session_state.get("temperatura", 0.7), 0.1,
