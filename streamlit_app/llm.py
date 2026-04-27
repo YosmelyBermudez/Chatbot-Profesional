@@ -117,26 +117,22 @@ def _openrouter_client():
 
 def _openrouter_stream(modelo_id: str, mensajes: List[dict], temperature: float) -> Iterator[str]:
     intentos = [modelo_id] + [m for m in OPENROUTER_FALLBACKS if m != modelo_id]
-    ultimo_error = None
     for modelo in intentos:
         try:
             client = _openrouter_client()
-            stream = client.chat.completions.create(
+            # Primero hace la llamada completa (no stream) para verificar que responde
+            res = client.chat.completions.create(
                 model=modelo,
                 messages=mensajes,
                 temperature=temperature,
-                stream=True,
+                stream=False,  # sin stream para poder capturar el error
             )
-            for chunk in stream:
-                delta = chunk.choices[0].delta.content if chunk.choices else None
-                if delta:
-                    yield delta
+            texto = res.choices[0].message.content or ""
+            yield texto
             return
-        except Exception as e:
-            ultimo_error = e
+        except Exception:
             continue
-    raise ultimo_error
-
+    yield "⚠️ Todos los modelos están saturados en este momento. Intenta de nuevo en unos segundos."
 
 def _openrouter_completo(modelo_id: str, mensajes: List[dict], temperature: float) -> str:
     intentos = [modelo_id] + [m for m in OPENROUTER_FALLBACKS if m != modelo_id]
