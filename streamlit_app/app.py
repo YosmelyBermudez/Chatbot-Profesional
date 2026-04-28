@@ -283,9 +283,38 @@ def render_chat(agente_key: str):
                 "Cuéntame qué necesitas y, si tienes documentos relacionados, "
                 "súbelos en la barra lateral para que pueda usarlos como referencia."
             )
-    for m in mensajes:
+    for i, m in enumerate(mensajes):
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
+            # Botones de descarga solo en la última respuesta del asistente
+            if m["role"] == "assistant" and i == len(mensajes) - 1:
+                titulo_desc = mensajes[i-1]["content"][:50].strip() if i > 0 else "Respuesta"
+                st.markdown("**⬇️ Descargar esta respuesta:**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.download_button(
+                        "📄 PDF",
+                        data=exportar.a_pdf(m["content"], titulo_desc),
+                        file_name=f"respuesta_{agente_key}.pdf",
+                        mime="application/pdf",
+                        key=f"dl_pdf_{agente_key}_{i}",
+                    )
+                with col2:
+                    st.download_button(
+                        "📝 DOCX",
+                        data=exportar.a_docx(m["content"], titulo_desc),
+                        file_name=f"respuesta_{agente_key}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key=f"dl_docx_{agente_key}_{i}",
+                    )
+                with col3:
+                    st.download_button(
+                        "📊 XLSX",
+                        data=exportar.a_xlsx(m["content"], titulo_desc),
+                        file_name=f"respuesta_{agente_key}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"dl_xlsx_{agente_key}_{i}",
+                    )
 
     # Entrada por voz
     audio_text = render_voice_input(agente_key)
@@ -356,36 +385,6 @@ def procesar_pregunta(agente_key: str, pregunta: str, ctx_extra: str):
     mensajes.append({"role": "assistant", "content": full})
     set_msgs(agente_key, mensajes)
     auto_guardar(agente_key)
-
-    # Botones de descarga de la última respuesta
-    if full:
-        titulo_desc = pregunta[:50].strip()
-        st.markdown("**⬇️ Descargar esta respuesta:**")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.download_button(
-                "📄 PDF",
-                data=exportar.a_pdf(full, titulo_desc),
-                file_name=f"respuesta_{agente_key}.pdf",
-                mime="application/pdf",
-                key=f"dl_pdf_{agente_key}_{len(mensajes)}",
-            )
-        with col2:
-            st.download_button(
-                "📝 DOCX",
-                data=exportar.a_docx(full, titulo_desc),
-                file_name=f"respuesta_{agente_key}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key=f"dl_docx_{agente_key}_{len(mensajes)}",
-            )
-        with col3:
-            st.download_button(
-                "📊 XLSX",
-                data=exportar.a_xlsx(full, titulo_desc),
-                file_name=f"respuesta_{agente_key}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"dl_xlsx_{agente_key}_{len(mensajes)}",
-            )
 
     st.rerun()
 
