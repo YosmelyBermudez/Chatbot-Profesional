@@ -483,7 +483,7 @@ def pantalla_conocimiento():
             if not docs:
                 st.info("Todavía no hay documentos para este agente.")
             for d in docs:
-                cols = st.columns([5, 1, 1])
+                cols = st.columns([5, 1, 1, 1])
                 with cols[0]:
                     st.markdown(f"**{d['nombre_archivo']}**")
                     st.caption(
@@ -495,6 +495,19 @@ def pantalla_conocimiento():
                                 help="Vista previa"):
                         st.session_state[f"preview_doc_{key}"] = d["id"]
                 with cols[2]:
+                    doc_bytes = db.obtener_bytes_documento(d["id"])
+                    if doc_bytes:
+                        st.download_button(
+                            "⬇️",
+                            data=doc_bytes["bytes"],
+                            file_name=doc_bytes["nombre"],
+                            mime="application/octet-stream",
+                            key=f"dl_doc_{d['id']}",
+                            help="Descargar original",
+                        )
+                    else:
+                        st.caption("—")
+                with cols[3]:
                     if st.button("🗑️", key=f"del_doc_{d['id']}",
                                 help="Eliminar documento"):
                         db.eliminar_documento(d["id"])

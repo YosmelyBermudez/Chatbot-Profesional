@@ -498,22 +498,22 @@ def eliminar_resumen(usuario_id: int, resumen_id: int):
 # ─── Documentos / RAG ────────────────────────────────────────────────────────
 
 def guardar_documento(agente: str, nombre_archivo: str, contenido: str,
-                      subido_por: int) -> int:
+                      subido_por: int, archivo_bytes: bytes = None) -> int:
     conn = get_conn()
     c = conn.cursor()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if USAR_POSTGRES:
         c.execute(
-            f"""INSERT INTO documentos (agente, nombre_archivo, contenido, subido_por, fecha_subida)
-               VALUES ({_placeholder(5)}) RETURNING id""",
-            (agente, nombre_archivo, contenido, subido_por, ahora),
+            f"""INSERT INTO documentos (agente, nombre_archivo, contenido, subido_por, fecha_subida, archivo_bytes)
+               VALUES ({_placeholder(6)}) RETURNING id""",
+            (agente, nombre_archivo, contenido, subido_por, ahora, archivo_bytes),
         )
         doc_id = c.fetchone()[0]
     else:
         c.execute(
-            f"""INSERT INTO documentos (agente, nombre_archivo, contenido, subido_por, fecha_subida)
-               VALUES ({_placeholder(5)})""",
-            (agente, nombre_archivo, contenido, subido_por, ahora),
+            f"""INSERT INTO documentos (agente, nombre_archivo, contenido, subido_por, fecha_subida, archivo_bytes)
+               VALUES ({_placeholder(6)})""",
+            (agente, nombre_archivo, contenido, subido_por, ahora, archivo_bytes),
         )
         doc_id = c.lastrowid
     conn.commit()
@@ -600,6 +600,22 @@ def obtener_contenido_documento(documento_id: int) -> Optional[dict]:
     if not row:
         return None
     return {"nombre": row["nombre_archivo"], "contenido": row["contenido"] or ""}
+
+def obtener_bytes_documento(documento_id: int) -> Optional[dict]:
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        f"SELECT nombre_archivo, archivo_bytes FROM documentos WHERE id={_ph()}",
+        (documento_id,),
+    )
+    row = _fetchone(c)
+    conn.close()
+    if not row or not row.get("archivo_bytes"):
+        return None
+    return {
+        "nombre": row["nombre_archivo"],
+        "bytes": bytes(row["archivo_bytes"]),
+    }
 
 # ─── Memoria del usuario ─────────────────────────────────────────────────────
 

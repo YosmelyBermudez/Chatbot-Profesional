@@ -119,14 +119,14 @@ def chunkear(texto: str, tam_chunk: int = 800, solapado: int = 100) -> List[str]
 
 def indexar_documento(agente: str, nombre_archivo: str, file_bytes: bytes,
                       subido_por: int) -> Tuple[int, int]:
-    """Extrae texto, chunkea y guarda en BD. Retorna (doc_id, n_chunks)."""
     texto = extraer_texto(nombre_archivo, file_bytes)
     if not texto.strip():
         raise ValueError("El archivo está vacío o no se pudo extraer texto")
     chunks = chunkear(texto)
     if not chunks:
         raise ValueError("No se generaron fragmentos a partir del archivo")
-    doc_id = db.guardar_documento(agente, nombre_archivo, texto, subido_por)
+    doc_id = db.guardar_documento(agente, nombre_archivo, texto, subido_por,
+                                   archivo_bytes=file_bytes)
     db.guardar_chunks(doc_id, agente, chunks)
     return doc_id, len(chunks)
 
