@@ -9,6 +9,7 @@ from typing import List, Tuple
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from typing import Optional
 
 import db
 
@@ -130,9 +131,8 @@ def indexar_documento(agente: str, nombre_archivo: str, file_bytes: bytes,
     return doc_id, len(chunks)
 
 
-def recuperar_contexto(agente: str, consulta: str, top_k: int = 4) -> str:
-    """Busca los chunks más relevantes para la consulta usando TF-IDF."""
-    chunks = db.listar_chunks(agente)
+def recuperar_contexto(agente: str, consulta: str, top_k: int = 4, usuario_id: Optional[int] = None) -> str:
+    chunks = db.listar_chunks(agente, usuario_id=usuario_id)
     if not chunks:
         return ""
 

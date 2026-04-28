@@ -214,7 +214,7 @@ def construir_mensajes(agente_key: str, mensajes_chat: list, ultima_pregunta: st
     agente = get_agente(agente_key)
     user = st.session_state.usuario
 
-    contexto_rag = rag.recuperar_contexto(agente_key, ultima_pregunta, top_k=4)
+    contexto_rag = rag.recuperar_contexto(agente_key, ultima_pregunta, top_k=4, usuario_id=user["id"])
     memoria = db.obtener_memoria(user["id"])
 
     bloques_sistema = [agente["system_prompt"]]
@@ -479,11 +479,11 @@ def pantalla_conocimiento():
 
             st.divider()
             st.subheader("Documentos cargados")
-            docs = db.listar_documentos(key)
+            docs = db.listar_documentos(key, usuario_id=user["id"])
             if not docs:
                 st.info("Todavía no hay documentos para este agente.")
             for d in docs:
-                cols = st.columns([5, 2, 1])
+                cols = st.columns([5, 1, 1])
                 with cols[0]:
                     st.markdown(f"**{d['nombre_archivo']}**")
                     st.caption(
@@ -491,13 +491,37 @@ def pantalla_conocimiento():
                         f"{d['n_chunks']} fragmentos"
                     )
                 with cols[1]:
-                    st.write("")
+                    if st.button("👁️", key=f"prev_doc_{d['id']}",
+                                help="Vista previa"):
+                        st.session_state[f"preview_doc_{key}"] = d["id"]
                 with cols[2]:
                     if st.button("🗑️", key=f"del_doc_{d['id']}",
-                                 help="Eliminar documento"):
+                                help="Eliminar documento"):
                         db.eliminar_documento(d["id"])
+                        if f"preview_doc_{key}" in st.session_state:
+                            del st.session_state[f"preview_doc_{key}"]
                         st.rerun()
 
+            # Vista previa
+            preview_id = st.session_state.get(f"preview_doc_{key}")
+            if preview_id:
+                doc_content = db.obtener_contenido_documento(preview_id)
+                if doc_content:
+                    with st.expander(f"👁️ Vista previa: {doc_content['nombre']}", expanded=True):
+                        if st.button("✖ Cerrar vista previa", key=f"close_prev_{key}"):
+                            del st.session_state[f"preview_doc_{key}"]
+                            st.rerun()
+                        # Mostrar primeros 3000 caracteres
+                        texto = doc_content["contenido"]
+                        st.markdown(f"**Total:** {len(texto):,} caracteres · {len(texto.split()):,} palabras")
+                        st.divider()
+                        st.text_area(
+                            "Contenido del documento",
+                            value=texto[:3000] + ("\n\n... [truncado, mostrando primeros 3000 caracteres]" if len(texto) > 3000 else ""),
+                            height=400,
+                            disabled=True,
+                            key=f"prev_text_{preview_id}",
+                        )
 
 # ============================================================
 # Pestaña: Resúmenes

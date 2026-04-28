@@ -532,36 +532,49 @@ def guardar_chunks(documento_id: int, agente: str, chunks: list):
     conn.close()
 
 
-def listar_documentos(agente: str) -> list:
+def listar_documentos(agente: str, usuario_id: Optional[int] = None) -> list:
     conn = get_conn()
     c = conn.cursor()
-    c.execute(
-        f"""SELECT d.id, d.nombre_archivo, d.fecha_subida, u.nombre as autor,
-                  (SELECT COUNT(*) FROM chunks WHERE documento_id=d.id) as n_chunks
-           FROM documentos d
-           LEFT JOIN usuarios u ON u.id = d.subido_por
-           WHERE d.agente={_ph()}
-           ORDER BY d.fecha_subida DESC""",
-        (agente,),
-    )
-    rows = _fetchall(c)
-    conn.close()
-    return rows
+    if usuario_id:
+        c.execute(
+            f"""SELECT d.id, d.nombre_archivo, d.fecha_subida, u.nombre as autor,
+                      (SELECT COUNT(*) FROM chunks WHERE documento_id=d.id) as n_chunks
+               FROM documentos d
+               LEFT JOIN usuarios u ON u.id = d.subido_por
+               WHERE d.agente={_ph()} AND d.subido_por={_ph()}
+               ORDER BY d.fecha_subida DESC""",
+            (agente, usuario_id),
+        )
+    else:
+        c.execute(
+            f"""SELECT d.id, d.nombre_archivo, d.fecha_subida, u.nombre as autor,
+                      (SELECT COUNT(*) FROM chunks WHERE documento_id=d.id) as n_chunks
+               FROM documentos d
+               LEFT JOIN usuarios u ON u.id = d.subido_por
+               WHERE d.agente={_ph()}
+               ORDER BY d.fecha_subida DESC""",
+            (agente,),
+        )
 
-
-def listar_chunks(agente: str) -> list:
+def listar_chunks(agente: str, usuario_id: Optional[int] = None) -> list:
     conn = get_conn()
     c = conn.cursor()
-    c.execute(
-        f"""SELECT c.id, c.texto, c.documento_id, d.nombre_archivo
-           FROM chunks c
-           LEFT JOIN documentos d ON d.id = c.documento_id
-           WHERE c.agente={_ph()}""",
-        (agente,),
-    )
-    rows = _fetchall(c)
-    conn.close()
-    return rows
+    if usuario_id:
+        c.execute(
+            f"""SELECT c.id, c.texto, c.documento_id, d.nombre_archivo
+               FROM chunks c
+               LEFT JOIN documentos d ON d.id = c.documento_id
+               WHERE c.agente={_ph()} AND d.subido_por={_ph()}""",
+            (agente, usuario_id),
+        )
+    else:
+        c.execute(
+            f"""SELECT c.id, c.texto, c.documento_id, d.nombre_archivo
+               FROM chunks c
+               LEFT JOIN documentos d ON d.id = c.documento_id
+               WHERE c.agente={_ph()}""",
+            (agente,),
+        )
 
 
 def eliminar_documento(documento_id: int):
@@ -572,6 +585,18 @@ def eliminar_documento(documento_id: int):
     conn.commit()
     conn.close()
 
+def obtener_contenido_documento(documento_id: int) -> Optional[dict]:
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        f"SELECT nombre_archivo, contenido FROM documentos WHERE id={_ph()}",
+        (documento_id,),
+    )
+    row = _fetchone(c)
+    conn.close()
+    if not row:
+        return None
+    return {"nombre": row["nombre_archivo"], "contenido": row["contenido"] or ""}
 
 # ─── Memoria del usuario ─────────────────────────────────────────────────────
 
