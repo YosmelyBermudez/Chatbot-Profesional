@@ -562,23 +562,16 @@ def listar_documentos(agente: str, usuario_id: Optional[int] = None) -> list:
 def listar_chunks(agente: str, usuario_id: Optional[int] = None) -> list:
     conn = get_conn()
     c = conn.cursor()
-    if usuario_id:
-        c.execute(
-            f"""SELECT c.id, c.texto, c.documento_id, d.nombre_archivo
-               FROM chunks c
-               LEFT JOIN documentos d ON d.id = c.documento_id
-               WHERE c.agente={_ph()} AND d.subido_por={_ph()}""",
-            (agente, usuario_id),
-        )
-    else:
-        c.execute(
-            f"""SELECT c.id, c.texto, c.documento_id, d.nombre_archivo
-               FROM chunks c
-               LEFT JOIN documentos d ON d.id = c.documento_id
-               WHERE c.agente={_ph()}""",
-            (agente,),
-        )
-
+    c.execute(
+        f"""SELECT c.id, c.texto, c.documento_id, d.nombre_archivo
+           FROM chunks c
+           LEFT JOIN documentos d ON d.id = c.documento_id
+           WHERE c.agente={_ph()}""",
+        (agente,),
+    )
+    rows = _fetchall(c)
+    conn.close()
+    return rows
 
 def eliminar_documento(documento_id: int):
     conn = get_conn()
