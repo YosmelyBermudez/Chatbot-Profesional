@@ -5,6 +5,7 @@ integración de conversaciones y entrada por voz.
 
 import os
 from datetime import datetime
+import exportar
 
 import traceback
 
@@ -355,6 +356,37 @@ def procesar_pregunta(agente_key: str, pregunta: str, ctx_extra: str):
     mensajes.append({"role": "assistant", "content": full})
     set_msgs(agente_key, mensajes)
     auto_guardar(agente_key)
+
+    # Botones de descarga de la última respuesta
+    if full:
+        titulo_desc = pregunta[:50].strip()
+        st.markdown("**⬇️ Descargar esta respuesta:**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.download_button(
+                "📄 PDF",
+                data=exportar.a_pdf(full, titulo_desc),
+                file_name=f"respuesta_{agente_key}.pdf",
+                mime="application/pdf",
+                key=f"dl_pdf_{agente_key}_{len(mensajes)}",
+            )
+        with col2:
+            st.download_button(
+                "📝 DOCX",
+                data=exportar.a_docx(full, titulo_desc),
+                file_name=f"respuesta_{agente_key}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"dl_docx_{agente_key}_{len(mensajes)}",
+            )
+        with col3:
+            st.download_button(
+                "📊 XLSX",
+                data=exportar.a_xlsx(full, titulo_desc),
+                file_name=f"respuesta_{agente_key}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"dl_xlsx_{agente_key}_{len(mensajes)}",
+            )
+
     st.rerun()
 
 
@@ -602,16 +634,33 @@ def pantalla_resumenes():
             f"{r['fecha_creacion'][:16]}"
         ):
             st.markdown(r["contenido"])
-            cols = st.columns([1, 1, 4])
-            with cols[0]:
+            titulo_res = r["titulo"] or "Resumen"
+            col_a, col_b, col_c, col_d = st.columns(4)
+            with col_a:
                 st.download_button(
-                    "⬇️ Descargar",
-                    r["contenido"],
-                    file_name=f"resumen_{r['id']}.md",
-                    mime="text/markdown",
-                    key=f"dl_{r['id']}",
+                    "📄 PDF",
+                    data=exportar.a_pdf(r["contenido"], titulo_res),
+                    file_name=f"resumen_{r['id']}.pdf",
+                    mime="application/pdf",
+                    key=f"dl_pdf_{r['id']}",
                 )
-            with cols[1]:
+            with col_b:
+                st.download_button(
+                    "📝 DOCX",
+                    data=exportar.a_docx(r["contenido"], titulo_res),
+                    file_name=f"resumen_{r['id']}.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    key=f"dl_docx_{r['id']}",
+                )
+            with col_c:
+                st.download_button(
+                    "📊 XLSX",
+                    data=exportar.a_xlsx(r["contenido"], titulo_res),
+                    file_name=f"resumen_{r['id']}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"dl_xlsx_{r['id']}",
+                )
+            with col_d:
                 if st.button("🗑️ Eliminar", key=f"delr_{r['id']}"):
                     db.eliminar_resumen(user["id"], r["id"])
                     st.rerun()
@@ -897,12 +946,30 @@ def pantalla_reuniones():
                 )
                 st.success("✅ Guardado en *Resúmenes*.")
         with col_d:
+            titulo_min = titulo_reunion or "Minuta"
             st.download_button(
-                "⬇️ Descargar como Markdown",
-                data=st.session_state.reunion_resumen,
-                file_name=f"minuta_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
-                mime="text/markdown",
+                "📄 PDF",
+                data=exportar.a_pdf(st.session_state.reunion_resumen, titulo_min),
+                file_name=f"minuta_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
                 use_container_width=True,
+                key="dl_min_pdf",
+            )
+            st.download_button(
+                "📝 DOCX",
+                data=exportar.a_docx(st.session_state.reunion_resumen, titulo_min),
+                file_name=f"minuta_{datetime.now().strftime('%Y%m%d_%H%M')}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
+                key="dl_min_docx",
+            )
+            st.download_button(
+                "📊 XLSX",
+                data=exportar.a_xlsx(st.session_state.reunion_resumen, titulo_min),
+                file_name=f"minuta_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                key="dl_min_xlsx",
             )
 
 
