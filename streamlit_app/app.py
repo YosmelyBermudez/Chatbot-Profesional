@@ -288,7 +288,7 @@ def render_chat(agente_key: str):
             st.markdown(m["content"])
             # Botones de descarga solo en la última respuesta del asistente
             if m["role"] == "assistant" and i == len(mensajes) - 1:
-                titulo_desc = mensajes[i-1]["content"][:50].strip() if i > 0 else "Respuesta"
+                titulo_desc = "Respuesta"
                 st.markdown("**⬇️ Descargar esta respuesta:**")
                 col1, col2, col3 = st.columns(3)
                 with col1:
