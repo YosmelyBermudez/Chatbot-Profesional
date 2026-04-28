@@ -555,6 +555,9 @@ def listar_documentos(agente: str, usuario_id: Optional[int] = None) -> list:
                ORDER BY d.fecha_subida DESC""",
             (agente,),
         )
+    rows = _fetchall(c)
+    conn.close()
+    return rows
 
 def listar_chunks(agente: str, usuario_id: Optional[int] = None) -> list:
     conn = get_conn()
