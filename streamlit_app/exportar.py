@@ -60,10 +60,17 @@ def a_pdf(texto: str, titulo: str = "Respuesta") -> bytes:
             txt = "• " + linea[2:].replace("**", "").replace("*", "")
             story.append(Paragraph(txt, estilo_normal))
         else:
-            # Convertir **negrita** a <b>
-            linea_html = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", linea)
-            linea_html = re.sub(r"\*(.*?)\*", r"<i>\1</i>", linea_html)
-            story.append(Paragraph(linea_html, estilo_normal))
+            try:
+                linea_html = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", linea)
+                linea_html = re.sub(r"\*(.*?)\*", r"<i>\1</i>", linea_html)
+                # Escapar caracteres problemáticos para ReportLab
+                linea_html = linea_html.replace("&", "&amp;").replace("<b>", "|||B|||").replace("</b>", "|||/B|||").replace("<i>", "|||I|||").replace("</i>", "|||/I|||")
+                linea_html = linea_html.replace("<", "&lt;").replace(">", "&gt;")
+                linea_html = linea_html.replace("|||B|||", "<b>").replace("|||/B|||", "</b>").replace("|||I|||", "<i>").replace("|||/I|||", "</i>")
+                story.append(Paragraph(linea_html, estilo_normal))
+            except Exception:
+                # Si falla, usar texto plano sin formato
+                story.append(Paragraph(_limpiar_markdown(linea), estilo_normal))
 
     doc.build(story)
     return buf.getvalue()
