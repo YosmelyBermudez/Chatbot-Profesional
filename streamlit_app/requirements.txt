@@ -9,3 +9,4 @@ scikit-learn
 bcrypt
 streamlit-mic-recorder
 streamlit-cookies-controller
+psycopg2-binary
