@@ -155,7 +155,7 @@ def recuperar_contexto(agente: str, consulta: str, top_k: int = 4, usuario_id: O
     indices = sim.argsort()[::-1][:top_k]
     seleccionados = []
     for i in indices:
-        if sim[i] <= 0:
+        if sim[i] < 0:
             continue
         nombre = chunks[i].get("nombre_archivo") or "documento"
         seleccionados.append(f"[Fuente: {nombre}]\n{chunks[i]['texto']}")

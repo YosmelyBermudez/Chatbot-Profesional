@@ -107,7 +107,8 @@ def a_xlsx(texto: str, titulo: str = "Respuesta") -> bytes:
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = titulo[:30]
+    titulo_hoja = _re.sub(r'[\\/*?:\[\]]', '', titulo)[:30] or "Respuesta"
+    ws.title = titulo_hoja
 
     ws.column_dimensions["A"].width = 120
 

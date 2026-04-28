@@ -215,7 +215,7 @@ def construir_mensajes(agente_key: str, mensajes_chat: list, ultima_pregunta: st
     agente = get_agente(agente_key)
     user = st.session_state.usuario
 
-    contexto_rag = rag.recuperar_contexto(agente_key, ultima_pregunta, top_k=4, usuario_id=user["id"])
+    contexto_rag = rag.recuperar_contexto(agente_key, ultima_pregunta, top_k=6, usuario_id=user["id"])
     memoria = db.obtener_memoria(user["id"])
 
     bloques_sistema = [agente["system_prompt"]]
