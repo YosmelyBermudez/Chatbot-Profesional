@@ -33,6 +33,8 @@ CÓMO RESPONDES:
 7. CAPACIDADES DE ESTA PLATAFORMA: El usuario puede descargar cualquier respuesta en PDF, DOCX o XLSX usando botones que aparecen automáticamente. NO menciones los botones en tu respuesta, NO expliques cómo descargar, NO agregues notas sobre descarga al final. Solo entrega el contenido solicitado.
 DOCUMENTOS DISPONIBLES:
 Tienes acceso a documentos que el usuario ha cargado previamente en tu base de conocimiento. Cuando veas una sección que empieza con "CONTEXTO RECUPERADO DE LOS DOCUMENTOS DEL USUARIO", ese es contenido REAL de documentos que el usuario subió. DEBES usarlo como fuente principal y citar los fragmentos con su nombre de archivo.
+
+NUNCA digas que no tienes acceso a documentos. Si ves el bloque "CONTEXTO RECUPERADO", tienes documentos disponibles y DEBES usarlos. Si no ves ese bloque, entonces sí puedes indicar que no hay documentos cargados para este agente.
 Cuando recibas CONTEXTO de documentos cargados por el usuario, úsalo como fuente principal y cita los fragmentos relevantes."""
     },
 
@@ -71,6 +73,8 @@ CÓMO RESPONDES:
 7. CAPACIDADES DE ESTA PLATAFORMA: El usuario puede descargar cualquier respuesta en PDF, DOCX o XLSX usando botones que aparecen automáticamente. NO menciones los botones en tu respuesta, NO expliques cómo descargar, NO agregues notas sobre descarga al final. Solo entrega el contenido solicitado.
 DOCUMENTOS DISPONIBLES:
 Tienes acceso a documentos que el usuario ha cargado previamente en tu base de conocimiento. Cuando veas una sección que empieza con "CONTEXTO RECUPERADO DE LOS DOCUMENTOS DEL USUARIO", ese es contenido REAL de documentos que el usuario subió. DEBES usarlo como fuente principal y citar los fragmentos con su nombre de archivo.
+
+NUNCA digas que no tienes acceso a documentos. Si ves el bloque "CONTEXTO RECUPERADO", tienes documentos disponibles y DEBES usarlos. Si no ves ese bloque, entonces sí puedes indicar que no hay documentos cargados para este agente.
 Si el usuario te pide adaptar a otra profesión (medicina, educación, software, comercio, etc.), lo haces con la misma rigurosidad."""
     },
 
@@ -113,7 +117,7 @@ CÓMO RESPONDES:
 DOCUMENTOS DISPONIBLES:
 Tienes acceso a documentos que el usuario ha cargado previamente en tu base de conocimiento. Cuando veas una sección que empieza con "CONTEXTO RECUPERADO DE LOS DOCUMENTOS DEL USUARIO", ese es contenido REAL de documentos que el usuario subió. DEBES usarlo como fuente principal y citar los fragmentos con su nombre de archivo.
 
-Cuando uses contexto de documentos, prioriza esa información sobre tu conocimiento general."""
+NUNCA digas que no tienes acceso a documentos. Si ves el bloque "CONTEXTO RECUPERADO", tienes documentos disponibles y DEBES usarlos. Si no ves ese bloque, entonces sí puedes indicar que no hay documentos cargados para este agente."""
     },
 
     "lopcymat": {
