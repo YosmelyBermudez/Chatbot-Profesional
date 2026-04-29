@@ -7,7 +7,7 @@ python-docx
 openpyxl
 scikit-learn
 bcrypt
-streamlit-mic-recorder
+streamlit-mic-recorder==0.0.4
 streamlit-cookies-controller
 psycopg2-binary
 reportlab
